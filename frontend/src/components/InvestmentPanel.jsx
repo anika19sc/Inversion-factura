@@ -61,7 +61,11 @@ export default function InvestmentPanel() {
   }
 
   const handleInvest = async () => {
-    if (!montInversion || isNaN(montInversion)) return;
+    console.log("Botón presionado, iniciando inversión con monto:", montInversion);
+    if (!montInversion || isNaN(montInversion) || Number(montInversion) <= 0) {
+      addLog("⚠️ Debes ingresar un monto válido a invertir");
+      return;
+    }
     addLog(`Procesando inversión de ${montInversion} ANKD... (Aprueba tu wallet)`);
     try {
       await invest(montInversion);
@@ -69,7 +73,9 @@ export default function InvestmentPanel() {
       setMontoInversion('');
       recargarDatos();
     } catch (err) {
-      addLog(`❌ La inversión ha fallado o fue rechazada.`);
+      console.error("Error detallado en handleInvest:", err);
+      addLog(`❌ La inversión falló: revisa la consola para ver el error.`);
+      alert("Falló la inversión: Ver consola para más detalles.");
     }
   }
 
