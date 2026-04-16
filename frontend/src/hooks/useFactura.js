@@ -1,6 +1,6 @@
 import { useReadContract, useWriteContract, useAccount } from 'wagmi';
 import { waitForTransactionReceipt } from '@wagmi/core';
-import { parseEther, formatEther } from 'viem';
+import { parseEther, formatEther, maxUint256 } from 'viem';
 import { CONTRATO_ADDRESS, ABI_FACTURA } from '../constants/contracts';
 import { config } from '../config/wagmiConfig';
 
@@ -40,8 +40,8 @@ export function useFactura() {
     const invest = async (amountInANKD) => {
       const amountInWei = parseEther(amountInANKD.toString());
 
-      // 1. Llamar a approve (Verificamos que el spender sea explícitamente el CONTRATO_ADDRESS)
-      const hashApprove = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'approve', args: [CONTRATO_ADDRESS, amountInWei] });
+      // 1. Llamar a approve usando Allowance Máximo (Infinite Approval)
+      const hashApprove = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'approve', args: [CONTRATO_ADDRESS, maxUint256] });
 
       // 2. Esperar que la red confirme la transacción de aprobación en un bloque
       await waitForTransactionReceipt(config, { hash: hashApprove });
@@ -60,8 +60,8 @@ export function useFactura() {
     }
 
   const finishAndPay = async () => {
-      // 1. Aprobar la transaccion primero
-      const hashApprove = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'approve', args: [CONTRATO_ADDRESS, parseEther("1100")] });
+      // 1. Aprobar la transaccion primero (Allowance Máximo)
+      const hashApprove = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'approve', args: [CONTRATO_ADDRESS, maxUint256] });
 
       // 2. Esperar confirmacion
       await waitForTransactionReceipt(config, { hash: hashApprove });
