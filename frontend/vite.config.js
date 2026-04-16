@@ -1,11 +1,14 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react()],
+  css: {
+    transformer: 'postcss', // Forzamos a usar PostCSS en lugar de LightningCSS
+    lightningcss: false     // Desactivamos LightningCSS explícitamente
+  },
   build: {
-    cssMinify: 'false' // <--- AGREGA ESTA LÍNEA
+    cssMinify: 'esbuild',   // Usamos esbuild que es más tolerante
+    minify: 'esbuild'
   }
 })
