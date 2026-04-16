@@ -65,8 +65,6 @@ const Landing = ({ onConnect }) => {
   const [hovered, setHovered] = useState(false);
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", position: "relative", overflow: "hidden", backgroundColor: COLORS.bg }}>
-      {/* IMAGEN DE FONDO - Se asegura que mantenga el aspecto responsive con "cover" y "center" */}
-      <div style={{ position: "absolute", inset: 0, backgroundImage: `url('/bg_fullscreen.png')`, backgroundSize: "cover", backgroundPosition: "center" }} />
       <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at center, transparent 30%, ${COLORS.bg} 100%)` }} />
       <div style={{ position: "absolute", inset: 0, backgroundImage: `linear-gradient(${COLORS.border} 1px, transparent 1px), linear-gradient(90deg, ${COLORS.border} 1px, transparent 1px)`, backgroundSize: "60px 60px", opacity: 0.4 }} />
 
