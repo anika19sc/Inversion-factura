@@ -4,5 +4,8 @@
     "lucide-react": "^1.8.0",
     "viem": "^2.48.0",
     "wagmi": "^3.6.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
   }
 }

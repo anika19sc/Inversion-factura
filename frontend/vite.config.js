@@ -6,6 +6,6 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
-    cssMinify: 'esbuild' // <--- AGREGA ESTA LÍNEA
+    cssMinify: 'false' // <--- AGREGA ESTA LÍNEA
   }
 })
