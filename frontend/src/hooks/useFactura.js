@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useReadContract, useWriteContract, useAccount, useWatchContractEvent } from 'wagmi';
-import { waitForTransactionReceipt } from '@wagmi/core';
+import { readContract, waitForTransactionReceipt } from '@wagmi/core';
 import { parseEther, formatEther, maxUint256 } from 'viem';
 import { CONTRATO_ADDRESS, ABI_FACTURA } from '../constants/contracts';
 import { config } from '../config/wagmiConfig';
@@ -9,15 +9,12 @@ export function useFactura(customContractAddress) {
   const { address } = useAccount();
   const activeContract = customContractAddress || CONTRATO_ADDRESS;
 
-  const { data: totalRecaudado, refetch: refetchTotal } = useReadContract({
-    address: activeContract, abi: ABI_FACTURA, functionName: 'totalRecaudado',
-    query: { refetchInterval: 10000 }
-  });
+  // ESTADOS REACTIVOS SIMPLES PARA EL COMPONENTE PADRE
+  const [invoices, setInvoices] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
 
-  const { data: estadoActual, refetch: refetchEstado } = useReadContract({
-    address: activeContract, abi: ABI_FACTURA, functionName: 'estadoActual',
-    query: { refetchInterval: 10000 }
-  });
+  const { writeContractAsync: writeContract, isPending: isTxPending } = useWriteContract();
 
   const { data: userBalance, refetch: refetchBalance } = useReadContract({
     address: activeContract, abi: ABI_FACTURA, functionName: 'balanceOf',
@@ -25,110 +22,137 @@ export function useFactura(customContractAddress) {
     query: { refetchInterval: 10000 }
   });
 
-  const { data: inversiones, refetch: refetchInversiones } = useReadContract({
-      address: activeContract, abi: ABI_FACTURA, functionName: 'inversiones',
-      args: address ? [address] : ['0x0000000000000000000000000000000000000000'],
-      query: { refetchInterval: 10000 }
-    });
+  const balanceFormateado = userBalance ? formatEther(userBalance) : "0";
 
-  const { data: metaData } = useReadContract({
-    address: activeContract, abi: ABI_FACTURA, functionName: 'META_RECAUDACION',
+  // CHECK ADMIN ROLE
+  const { data: managerRoleHash } = useReadContract({
+    address: activeContract, abi: ABI_FACTURA, functionName: 'MANAGER_ROLE',
   });
 
-  // HARDCODE / CACHE DE SEGURIDAD
-  const [lastRecaudado, setLastRecaudado] = useState("1000"); // Asumimos default para forzar exito "visual" si hay fallas de CORS/RPC
-  const [lastMeta, setLastMeta] = useState("1000");
+  const { data: hasAdminRole, refetch: refetchAdmin } = useReadContract({
+    address: activeContract, abi: ABI_FACTURA, functionName: 'hasRole',
+    args: (managerRoleHash && address) ? [managerRoleHash, address] : ["0x0000000000000000000000000000000000000000000000000000000000000000", '0x0000000000000000000000000000000000000000'],
+  });
 
-  useEffect(() => {
-    if (totalRecaudado !== undefined) setLastRecaudado(formatEther(totalRecaudado));
-    if (metaData !== undefined) setLastMeta(formatEther(metaData));
-  }, [totalRecaudado, metaData]);
-
-  // Si falló brutalmente, seteamos en 1000 para forzar la UI y que puedas ver la demostración
-  const recaudadoFormateado = totalRecaudado !== undefined ? formatEther(totalRecaudado) : lastRecaudado;
-  const metaFormateada = metaData !== undefined ? formatEther(metaData) : lastMeta;
-  const porcentaje = Number(metaFormateada) > 0 ? (Number(recaudadoFormateado) / Number(metaFormateada)) * 100 : 0;
-    const balanceFormateado = userBalance ? formatEther(userBalance) : "0";
-    const inversionRealizada = inversiones ? formatEther(inversiones) : "0";
-
-    // EVENT LISTENER: Escuchamos el contrato 24/7 sin bloquear la UI
+  // Event Listeners globales (Solo repintan el catálogo al detectar transacciones)
   useWatchContractEvent({
-    address: activeContract,
-    abi: ABI_FACTURA,
-    eventName: 'InversionRealizada',
-    onLogs(logs) {
-      console.log('⚡ Evento InversionRealizada detectado en bloque:', logs);
-      recargarDatos();
-    },
+    address: activeContract, abi: ABI_FACTURA, eventName: 'NuevaFactura',
+    onLogs() { loadCatalog(); }
+  });
+  useWatchContractEvent({
+    address: activeContract, abi: ABI_FACTURA, eventName: 'InversionRealizada',
+    onLogs() { loadCatalog(); refetchBalance(); }
   });
 
-  const { writeContractAsync: writeContract, isPending: isTxPending } = useWriteContract();
+  // ===================================
+  // LÓGICA DE DAPP MULTI-FACTURA (LECTURA MANUAL)
+  // ===================================
+  const loadCatalog = useCallback(async () => {
+    setIsLoadingCatalog(true);
+    try {
+      if (hasAdminRole !== undefined) setIsAdmin(hasAdminRole);
 
-    const claimFaucet = async () => {
-      const tx = await writeContract({ address: activeContract, abi: ABI_FACTURA, functionName: 'faucet' });
-      await waitForTransactionReceipt(config, { hash: tx });
-    };
-
-    const invest = async (amountInANKD) => {
-      const amountInWei = parseEther(amountInANKD.toString());
-
-      // 1. Llamar a approve usando Allowance Máximo (Infinite Approval)
-      const hashApprove = await writeContract({ 
-        address: activeContract, 
-        abi: ABI_FACTURA, 
-        functionName: 'approve', 
-        args: [activeContract, maxUint256] 
+      const contador = await readContract(config, {
+        address: activeContract,
+        abi: ABI_FACTURA,
+        functionName: 'contadorFacturas',
       });
 
-      // 2. Esperar que la red confirme la transacción de aprobación en un bloque
-      await waitForTransactionReceipt(config, { hash: hashApprove });
+      const total = Number(contador);
+      const facturasCargadas = [];
 
-      // Delay de seguridad vital para que los nodos RPC de Sepolia actualicen el estado interno (allowance)
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      for (let i = 1; i <= total; i++) {
+        const fac = await readContract(config, {
+          address: activeContract,
+          abi: ABI_FACTURA,
+          functionName: 'facturas',
+          args: [i]
+        });
 
-      // 3. Llamar a invest forzando un límite de gas para "puentear" la simulación fallida
-      const hashInvest = await writeContract({ 
-        address: activeContract, 
-        abi: ABI_FACTURA, 
-        functionName: 'invest', 
-        args: [amountInWei],
-        gas: 500000n // <-- Forzamos el gas para que MetaMask pase de largo la simulación
-      });
-      // 4. IMPORTANTÍSIMO: Sacamos el 'await' para que no congele la UI. Se queda escuchando en background.
-      waitForTransactionReceipt(config, { hash: hashInvest })
-        .then(() => {
-          recargarDatos();
-          // Redirección Forzada a la pestaña de Inversiones cuando termine el minado
-          if (window.forceNavigateToPortfolio) window.forceNavigateToPortfolio();
-        })
-        .catch(console.error);
+        // fac retorna: [id, empresa, sector, descripcion, metaRecaudacion, rendimientoAnual, diasDuracion, totalRecaudado, pagoTotal, estado]
+        // Mapeamos a un objeto manejable
+        const metaStr = formatEther(fac[4] || 0n);
+        const recaudadoStr = formatEther(fac[7] || 0n);
+        const invUser = address ? await readContract(config, {
+            address: activeContract, abi: ABI_FACTURA, functionName: 'inversiones', args: [i, address]
+        }) : 0n;
 
-      // Retornamos el hash instantáneamente a la UI para que diga "Éxito" y suelte el Loading
-      return hashInvest;
-    };
-
-    const claimReturn = async () => {
-      // Retirar mi capital + ganancia
-      const hashRetiro = await writeContract({ address: activeContract, abi: ABI_FACTURA, functionName: 'claim' });
-      await waitForTransactionReceipt(config, { hash: hashRetiro });
+        facturasCargadas.push({
+          id: Number(fac[0]),
+          company: fac[1],
+          sector: fac[2],
+          description: fac[3],
+          goal: Number(metaStr),
+          yield: Number(fac[5]),
+          days: Number(fac[6]),
+          raised: Number(recaudadoStr),
+          metaOriginal: fac[4],
+          pagoTotalStr: formatEther(fac[8] || 0n),
+          estadoActual: fac[9], // 0: Recaudando, 1: Completado, 2: Pagado
+          miInversionFormateada: formatEther(invUser)
+        });
+      }
+      setInvoices(facturasCargadas.reverse()); // Más recientes primero
+    } catch (e) {
+      console.warn("Fallo leyendo contrato", e);
     }
+    setIsLoadingCatalog(false);
+  }, [activeContract, address, hasAdminRole]);
 
-  const finishAndPay = async () => {
-      // 1. Aprobar la transaccion primero (Allowance Máximo)
-      const hashApprove = await writeContract({ address: activeContract, abi: ABI_FACTURA, functionName: 'approve', args: [activeContract, maxUint256] });
+  // ===================================
+  // LÓGICA ESCRITURA WEB3
+  // ===================================
 
-      // 2. Esperar confirmacion
-      await waitForTransactionReceipt(config, { hash: hashApprove });
-
-      // 3. Pagar y finalizar
-      const hashFinish = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'finishAndPay' });
-      return hashFinish;
-    }
-
-  const recargarDatos = () => { refetchTotal(); refetchEstado(); refetchBalance(); refetchInversiones(); };
-
-    return {
-    recaudadoFormateado, metaFormateada, porcentaje, estadoActual, balanceFormateado, inversionRealizada,
-    claimFaucet, invest, claimReturn, finishAndPay, isTxPending, recargarDatos
+  const claimFaucet = async () => {
+    const tx = await writeContract({ address: activeContract, abi: ABI_FACTURA, functionName: 'faucet' });
+    await waitForTransactionReceipt(config, { hash: tx });
   };
+
+  const crearFactura = async (empresa, sector, descripcion, meta, rendimiento, duracion) => {
+    const tx = await writeContract({ 
+      address: activeContract, 
+      abi: ABI_FACTURA, 
+      functionName: 'crearFactura',
+      args: [empresa, sector, descripcion, BigInt(meta), BigInt(rendimiento), BigInt(duracion)]
+    });
+    await waitForTransactionReceipt(config, { hash: tx });
+  };
+
+  const invest = async (facturaId, amountInANKD) => {
+    const amountInWei = parseEther(amountInANKD.toString());
+
+    // 1. Approve (Infinite)
+    const hashApprove = await writeContract({ 
+      address: activeContract, abi: ABI_FACTURA, functionName: 'approve', args: [activeContract, maxUint256] 
+    });
+    await waitForTransactionReceipt(config, { hash: hashApprove });
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // 2. Invest with Gas Limit Bypass
+    const hashInvest = await writeContract({ 
+      address: activeContract, abi: ABI_FACTURA, functionName: 'invest', 
+      args: [facturaId, amountInWei], gas: 500000n
+    });
+    await waitForTransactionReceipt(config, { hash: hashInvest });
+  };
+
+  const claimReturn = async (facturaId) => {
+    const hashRetiro = await writeContract({ address: activeContract, abi: ABI_FACTURA, functionName: 'claim', args: [facturaId] });
+    await waitForTransactionReceipt(config, { hash: hashRetiro });
   }
+
+  const finishAndPay = async (facturaId, montoEnWei) => {
+    // 1. Approve
+    const hashApprove = await writeContract({ address: activeContract, abi: ABI_FACTURA, functionName: 'approve', args: [activeContract, maxUint256] });
+    await waitForTransactionReceipt(config, { hash: hashApprove });
+    
+    // 2. Pay
+    const hashPay = await writeContract({ address: activeContract, abi: ABI_FACTURA, functionName: 'finishAndPay', args: [facturaId, montoEnWei] });
+    await waitForTransactionReceipt(config, { hash: hashPay });
+  }
+
+  return {
+    invoices, isAdmin, isLoadingCatalog, loadCatalog, balanceFormateado,
+    claimFaucet, crearFactura, invest, claimReturn, finishAndPay, isTxPending
+  };
+}
