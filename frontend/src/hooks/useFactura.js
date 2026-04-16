@@ -1,4 +1,4 @@
-import { useReadContract, useWriteContract, useAccount } from 'wagmi';
+import { useReadContract, useWriteContract, useAccount, useWatchContractEvent } from 'wagmi';
 import { waitForTransactionReceipt } from '@wagmi/core';
 import { parseEther, formatEther, maxUint256 } from 'viem';
 import { CONTRATO_ADDRESS, ABI_FACTURA } from '../constants/contracts';
@@ -34,7 +34,18 @@ export function useFactura() {
     const balanceFormateado = userBalance ? formatEther(userBalance) : "0";
     const inversionRealizada = inversiones ? formatEther(inversiones) : "0";
 
-    const { writeContractAsync: writeContract, isPending: isTxPending } = useWriteContract();
+    // EVENT LISTENER: Escuchamos el contrato 24/7 sin bloquear la UI
+  useWatchContractEvent({
+    address: CONTRATO_ADDRESS,
+    abi: ABI_FACTURA,
+    eventName: 'InversionRealizada',
+    onLogs(logs) {
+      console.log('⚡ Evento InversionRealizada detectado en bloque:', logs);
+      recargarDatos();
+    },
+  });
+
+  const { writeContractAsync: writeContract, isPending: isTxPending } = useWriteContract();
 
     const claimFaucet = async () => {
       const tx = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'faucet' });
@@ -61,10 +72,16 @@ export function useFactura() {
         args: [amountInWei],
         gas: 500000n // <-- Forzamos el gas para que MetaMask pase de largo la simulación
       });
-      
-      // 4. IMPORTANTÍSIMO: Esperar a que la red mine la inversión antes de decir "éxito"
-      await waitForTransactionReceipt(config, { hash: hashInvest });
+      // 4. IMPORTANTÍSIMO: Sacamos el 'await' para que no congele la UI. Se queda escuchando en background.
+      waitForTransactionReceipt(config, { hash: hashInvest })
+        .then(() => {
+          recargarDatos();
+          // Redirección Forzada a la pestaña de Inversiones cuando termine el minado
+          if (window.forceNavigateToPortfolio) window.forceNavigateToPortfolio();
+        })
+        .catch(console.error);
 
+      // Retornamos el hash instantáneamente a la UI para que diga "Éxito" y suelte el Loading
       return hashInvest;
     };
 

@@ -145,8 +145,8 @@ const ProjectDetail = ({ invoice, onBack, factura }) => {
     if (invoice.id === 1) {
       try {
         await factura.invest(amount);
+        // Liberamos el loading inmediatamente. El polling on-chain y el EventListener harán el resto en background
         setState("success");
-        factura.recargarDatos();
       } catch (e) {
         setState("idle");
         alert("Excepción / Rechazado");
@@ -394,6 +394,14 @@ function MainApp() {
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
+  }, []);
+
+  useEffect(() => {
+    // Exponemos la navegación al listener de background para no depender de Router
+    window.forceNavigateToPortfolio = () => {
+      setSelectedInvoice(null);
+      setActiveNav("portfolio");
+    };
   }, []);
 
   const handleConnect = () => { connect({ connector: injected() }); setView("app"); setActiveNav("dashboard"); };
