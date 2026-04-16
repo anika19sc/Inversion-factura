@@ -4,33 +4,34 @@ import { parseEther, formatEther, maxUint256 } from 'viem';
 import { CONTRATO_ADDRESS, ABI_FACTURA } from '../constants/contracts';
 import { config } from '../config/wagmiConfig';
 
-export function useFactura() {
+export function useFactura(customContractAddress) {
   const { address } = useAccount();
+  const activeContract = customContractAddress || CONTRATO_ADDRESS;
 
   const { data: totalRecaudado, refetch: refetchTotal } = useReadContract({
-    address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'totalRecaudado',
+    address: activeContract, abi: ABI_FACTURA, functionName: 'totalRecaudado',
     query: { refetchInterval: 4000 }
   });
 
   const { data: estadoActual, refetch: refetchEstado } = useReadContract({
-    address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'estadoActual',
+    address: activeContract, abi: ABI_FACTURA, functionName: 'estadoActual',
     query: { refetchInterval: 4000 }
   });
 
   const { data: userBalance, refetch: refetchBalance } = useReadContract({
-    address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'balanceOf',
+    address: activeContract, abi: ABI_FACTURA, functionName: 'balanceOf',
     args: address ? [address] : ['0x0000000000000000000000000000000000000000'],
     query: { refetchInterval: 4000 }
   });
 
   const { data: inversiones, refetch: refetchInversiones } = useReadContract({
-      address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'inversiones',
+      address: activeContract, abi: ABI_FACTURA, functionName: 'inversiones',
       args: address ? [address] : ['0x0000000000000000000000000000000000000000'],
       query: { refetchInterval: 4000 }
     });
 
   const { data: metaData } = useReadContract({
-    address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'META_RECAUDACION',
+    address: activeContract, abi: ABI_FACTURA, functionName: 'META_RECAUDACION',
   });
 
   const recaudadoFormateado = totalRecaudado !== undefined ? formatEther(totalRecaudado) : "0";
@@ -41,7 +42,7 @@ export function useFactura() {
 
     // EVENT LISTENER: Escuchamos el contrato 24/7 sin bloquear la UI
   useWatchContractEvent({
-    address: CONTRATO_ADDRESS,
+    address: activeContract,
     abi: ABI_FACTURA,
     eventName: 'InversionRealizada',
     onLogs(logs) {
@@ -53,15 +54,20 @@ export function useFactura() {
   const { writeContractAsync: writeContract, isPending: isTxPending } = useWriteContract();
 
     const claimFaucet = async () => {
-      const tx = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'faucet' });
-      return tx;
+      const tx = await writeContract({ address: activeContract, abi: ABI_FACTURA, functionName: 'faucet' });
+      await waitForTransactionReceipt(config, { hash: tx });
     };
 
     const invest = async (amountInANKD) => {
       const amountInWei = parseEther(amountInANKD.toString());
 
       // 1. Llamar a approve usando Allowance Máximo (Infinite Approval)
-      const hashApprove = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'approve', args: [CONTRATO_ADDRESS, maxUint256] });
+      const hashApprove = await writeContract({ 
+        address: activeContract, 
+        abi: ABI_FACTURA, 
+        functionName: 'approve', 
+        args: [activeContract, maxUint256] 
+      });
 
       // 2. Esperar que la red confirme la transacción de aprobación en un bloque
       await waitForTransactionReceipt(config, { hash: hashApprove });
@@ -71,7 +77,7 @@ export function useFactura() {
 
       // 3. Llamar a invest forzando un límite de gas para "puentear" la simulación fallida
       const hashInvest = await writeContract({ 
-        address: CONTRATO_ADDRESS, 
+        address: activeContract, 
         abi: ABI_FACTURA, 
         functionName: 'invest', 
         args: [amountInWei],
@@ -91,13 +97,14 @@ export function useFactura() {
     };
 
     const claimReturn = async () => {
-      const tx = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'claim' });
-      return tx;
+      // Retirar mi capital + ganancia
+      const hashRetiro = await writeContract({ address: activeContract, abi: ABI_FACTURA, functionName: 'claim' });
+      await waitForTransactionReceipt(config, { hash: hashRetiro });
     }
 
   const finishAndPay = async () => {
       // 1. Aprobar la transaccion primero (Allowance Máximo)
-      const hashApprove = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'approve', args: [CONTRATO_ADDRESS, maxUint256] });
+      const hashApprove = await writeContract({ address: activeContract, abi: ABI_FACTURA, functionName: 'approve', args: [activeContract, maxUint256] });
 
       // 2. Esperar confirmacion
       await waitForTransactionReceipt(config, { hash: hashApprove });

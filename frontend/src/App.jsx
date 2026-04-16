@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { WagmiProvider, useAccount, useConnect } from 'wagmi';
+import { WagmiProvider, useAccount, useConnect, useDisconnect } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { config } from './config/wagmiConfig';
@@ -376,7 +376,9 @@ const NAV_ITEMS = [{ id: "dashboard", label: "Activos", icon: "chart" }, { id: "
 function MainApp() {
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
-  const factura = useFactura();
+  const { disconnect } = useDisconnect();
+  // Pasamos la dirección solicitada explícitamente al hook
+  const factura = useFactura("0x395D5Fd2bc34EdB28aaaB57c3818545b82c39259");
   const wallet = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "No conectada";
 
   const [view, setView] = useState("landing");
@@ -389,12 +391,10 @@ function MainApp() {
   const allInvoices = [
     {
       id: 1, company: "Acme Corp Factura (Contrato Real)", sector: "Construcción",
+      contractAddress: "0x395D5Fd2bc34EdB28aaaB57c3818545b82c39259",
       raised: Number(factura.recaudadoFormateado), goal: Number(factura.metaFormateada || 1000), yield: 10.0, days: 30, risk: "Bajo", riskColor: COLORS.accent, status: statusLbl,
       description: "Esta es tu factura del smart contract conectada en tiempo real a Sepolia.",
       history: [0, 100, 250, 400, Number(factura.recaudadoFormateado)],
-    },
-    {
-      id: 2, company: "MercadoFresh Demo", sector: "Logística", raised: 420, goal: 800, yield: 14.2, days: 15, risk: "Medio", riskColor: COLORS.gold, status: "Recaudando", description: "Demo visual", history: [50, 100, 180, 280, 420],
     }
   ];
 
@@ -452,7 +452,11 @@ function MainApp() {
             );
           })}
         </nav>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 14px", background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8 }}><div style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.accent, boxShadow: `0 0 6px ${COLORS.accent}` }} /><span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: COLORS.textMuted }}>{wallet} || {factura.balanceFormateado} ANKD</span></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 14px", background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8 }}>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.accent, boxShadow: `0 0 6px ${COLORS.accent}` }} />
+          <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: COLORS.textMuted }}>{wallet} || {factura.balanceFormateado} ANKD</span>
+          <button onClick={() => disconnect()} style={{marginLeft: 8, padding: "2px 8px", fontSize: 10, cursor: "pointer", background: "none", border: `1px solid ${COLORS.red}55`, color: COLORS.red, borderRadius: 4, visibility: isConnected ? "visible" : "hidden"}}>Desconectar</button>
+        </div>
       </header>
       <main style={{ flex: 1, animation: "fadeIn 0.3s ease" }}>{renderMain()}</main>
     </div>
