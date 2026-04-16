@@ -389,7 +389,7 @@ function MainApp() {
   const allInvoices = [
     {
       id: 1, company: "Acme Corp Factura (Contrato Real)", sector: "Construcción",
-      raised: Number(factura.recaudadoFormateado), goal: 1000, yield: 10.0, days: 30, risk: "Bajo", riskColor: COLORS.accent, status: statusLbl,
+      raised: Number(factura.recaudadoFormateado), goal: Number(factura.metaFormateada || 1000), yield: 10.0, days: 30, risk: "Bajo", riskColor: COLORS.accent, status: statusLbl,
       description: "Esta es tu factura del smart contract conectada en tiempo real a Sepolia.",
       history: [0, 100, 250, 400, Number(factura.recaudadoFormateado)],
     },

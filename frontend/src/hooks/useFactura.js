@@ -29,8 +29,13 @@ export function useFactura() {
       query: { refetchInterval: 4000 }
     });
 
-    const recaudadoFormateado = totalRecaudado ? formatEther(totalRecaudado) : "0";
-    const porcentaje = totalRecaudado ? (Number(recaudadoFormateado) / 1000) * 100 : 0;
+  const { data: metaData } = useReadContract({
+    address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'META_RECAUDACION',
+  });
+
+  const recaudadoFormateado = totalRecaudado !== undefined ? formatEther(totalRecaudado) : "0";
+  const metaFormateada = metaData !== undefined ? formatEther(metaData) : "1000";
+  const porcentaje = Number(metaFormateada) > 0 ? (Number(recaudadoFormateado) / Number(metaFormateada)) * 100 : 0;
     const balanceFormateado = userBalance ? formatEther(userBalance) : "0";
     const inversionRealizada = inversiones ? formatEther(inversiones) : "0";
 
@@ -105,7 +110,7 @@ export function useFactura() {
   const recargarDatos = () => { refetchTotal(); refetchEstado(); refetchBalance(); refetchInversiones(); };
 
     return {
-      recaudadoFormateado, porcentaje, estadoActual, balanceFormateado, inversionRealizada,
-      claimFaucet, invest, claimReturn, finishAndPay, isTxPending, recargarDatos
-    };
+    recaudadoFormateado, metaFormateada, porcentaje, estadoActual, balanceFormateado, inversionRealizada,
+    claimFaucet, invest, claimReturn, finishAndPay, isTxPending, recargarDatos
+  };
   }
