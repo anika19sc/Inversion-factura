@@ -119,7 +119,7 @@ const DashboardUI = ({ invoices, onSelectInvoice }) => (
               </div>
               <ProgressBar pct={pct} color={inv.status === "Pagado" ? COLORS.gold : COLORS.accent} />
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, marginBottom: 16 }}>
-                <span style={{ fontSize: 11, color: COLORS.textMuted }}>{pct}% recaudado</span>
+                <span style={{ fontSize: 11, color: COLORS.textMuted }}>{pct}% ({Math.max(0, inv.goal - inv.raised)} ANKD restantes)</span>
                 {inv.days > 0 && <span style={{ fontSize: 11, color: COLORS.textMuted, display: "flex", alignItems: "center", gap: 4 }}><Icon name="clock" size={11} color={COLORS.textMuted} />{inv.days}d</span>}
               </div>
               <button onClick={() => onSelectInvoice(inv)} style={{ width: "100%", padding: "11px", background: COLORS.accentDim, border: `1px solid ${COLORS.accent}44`, borderRadius: 7, color: COLORS.accent, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "background 0.2s" }}
@@ -138,6 +138,8 @@ const ProjectDetail = ({ invoice, onBack, factura }) => {
   const [amount, setAmount] = useState("");
   const [state, setState] = useState("idle");
   const pct = Math.round((invoice.raised / invoice.goal) * 100);
+  const restante = Math.max(0, invoice.goal - invoice.raised);
+  const metaAlcanzada = invoice.raised >= invoice.goal;
 
   const handleInvest = async () => {
     if (!amount || parseFloat(amount) <= 0) return;
@@ -169,8 +171,15 @@ const ProjectDetail = ({ invoice, onBack, factura }) => {
             <p style={{ fontSize: 14, color: COLORS.text, lineHeight: 1.8, margin: 0 }}>{invoice.description}</p>
           </div>
           <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 24 }}>
-            <div style={{ fontSize: 12, color: COLORS.textMuted, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 20 }}>Progreso</div>
-            <ProgressBar pct={pct} color={invoice.status === "Pagado" ? COLORS.gold : COLORS.accent} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20 }}>
+              <div style={{ fontSize: 12, color: COLORS.textMuted, letterSpacing: "0.08em", textTransform: "uppercase" }}>Progreso</div>
+              {restante > 0 ? (
+                <div style={{ fontSize: 13, color: COLORS.accent, fontWeight: 700 }}>{restante} ANKD restantes</div>
+              ) : (
+                <div style={{ fontSize: 13, color: COLORS.gold, fontWeight: 700 }}>🏆 Meta Alcanzada</div>
+              )}
+            </div>
+            <ProgressBar pct={Math.min(pct, 100)} color={invoice.status === "Pagado" ? COLORS.gold : COLORS.accent} />
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
               <span style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace" }}>{invoice.raised} ANKD</span>
               <span style={{ fontSize: 12, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace" }}>Meta: {invoice.goal} ANKD</span>
@@ -196,12 +205,18 @@ const ProjectDetail = ({ invoice, onBack, factura }) => {
               <div style={{ textAlign: "center", padding: "32px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
                 <Spinner /> <div style={{ fontSize: 13, color: COLORS.textMuted }}>Ejecutando en Blockchain...</div>
               </div>
+            ) : metaAlcanzada || invoice.status === "Completado" ? (
+              <div style={{ textAlign: "center", padding: "24px 0" }}>
+                <button disabled style={{ width: "100%", padding: 14, background: COLORS.surfaceAlt, border: `1px solid ${COLORS.border}`, borderRadius: 8, color: COLORS.textMuted, fontSize: 15, fontWeight: 700, cursor: "not-allowed", fontFamily: "'DM Sans', sans-serif" }}>
+                  Recaudación Completada
+                </button>
+              </div>
             ) : invoice.status === "Recaudando" ? (
               <>
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ fontSize: 11, color: COLORS.textMuted, letterSpacing: "0.08em", textTransform: "uppercase", display: "block", marginBottom: 8 }}>Monto a invertir (ANKD)</label>
                   <div style={{ position: "relative" }}>
-                    <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="1.00"
+                    <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder={`Máximo disponbile: ${restante}`}
                       style={{ width: "100%", padding: "12px 16px 12px 16px", background: COLORS.surfaceAlt, border: `1px solid ${COLORS.border}`, borderRadius: 8, color: COLORS.text, fontSize: 16, fontFamily: "'JetBrains Mono', monospace", outline: "none", boxSizing: "border-box" }}
                       onFocus={e => e.target.style.borderColor = COLORS.accent} onBlur={e => e.target.style.borderColor = COLORS.border}
                     />
