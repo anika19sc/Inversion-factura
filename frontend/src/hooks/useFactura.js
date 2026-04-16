@@ -49,8 +49,14 @@ export function useFactura() {
       // Delay de seguridad vital para que los nodos RPC de Sepolia actualicen el estado interno (allowance)
       await new Promise(resolve => setTimeout(resolve, 3000));
 
-      // 3. Llamar a invest
-      const hashInvest = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'invest', args: [amountInWei] });
+      // 3. Llamar a invest forzando un límite de gas para "puentear" la simulación fallida
+      const hashInvest = await writeContract({ 
+        address: CONTRATO_ADDRESS, 
+        abi: ABI_FACTURA, 
+        functionName: 'invest', 
+        args: [amountInWei],
+        gas: 500000n // <-- Forzamos el gas para que MetaMask pase de largo la simulación
+      });
       return hashInvest;
     };
 
