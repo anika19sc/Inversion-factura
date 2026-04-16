@@ -1,6 +1,8 @@
 import { useReadContract, useWriteContract, useAccount } from 'wagmi';
+import { waitForTransactionReceipt } from '@wagmi/core';
 import { parseEther, formatEther } from 'viem';
 import { CONTRATO_ADDRESS, ABI_FACTURA } from '../constants/contracts';
+import { config } from '../config/wagmiConfig';
 
 export function useFactura() {
   const { address } = useAccount();
@@ -37,9 +39,15 @@ export function useFactura() {
 
   const invest = async (amountInANKD) => {
     const amountInWei = parseEther(amountInANKD.toString());
-    await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'approve', args: [CONTRATO_ADDRESS, amountInWei] });
-    const tx = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'invest', args: [amountInWei] });
-    return tx;
+    // 1. Llamar a approve y capturar el hash de la transaccion
+    const hashApprove = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'approve', args: [CONTRATO_ADDRESS, amountInWei] });
+    
+    // 2. Esperar que la red confirme la transacción de aprobación
+    await waitForTransactionReceipt(config, { hash: hashApprove });
+    
+    // 3. Llamar a invest
+    const hashInvest = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'invest', args: [amountInWei] });
+    return hashInvest;
   };
 
   const claimReturn = async () => {
@@ -48,9 +56,15 @@ export function useFactura() {
   }
 
   const finishAndPay = async () => {
-    await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'approve', args: [CONTRATO_ADDRESS, parseEther("1100")] });
-    const tx = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'finishAndPay' });
-    return tx;
+    // 1. Aprobar la transaccion primero
+    const hashApprove = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'approve', args: [CONTRATO_ADDRESS, parseEther("1100")] });
+    
+    // 2. Esperar confirmacion
+    await waitForTransactionReceipt(config, { hash: hashApprove });
+    
+    // 3. Pagar y finalizar
+    const hashFinish = await writeContract({ address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'finishAndPay' });
+    return hashFinish;
   }
 
   const recargarDatos = () => { refetchTotal(); refetchEstado(); refetchBalance(); refetchInversiones(); };
