@@ -9,20 +9,24 @@ export function useFactura() {
 
   const { data: totalRecaudado, refetch: refetchTotal } = useReadContract({
     address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'totalRecaudado',
+    query: { refetchInterval: 4000 }
   });
 
   const { data: estadoActual, refetch: refetchEstado } = useReadContract({
     address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'estadoActual',
+    query: { refetchInterval: 4000 }
   });
 
   const { data: userBalance, refetch: refetchBalance } = useReadContract({
     address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'balanceOf',
     args: address ? [address] : ['0x0000000000000000000000000000000000000000'],
+    query: { refetchInterval: 4000 }
   });
 
   const { data: inversiones, refetch: refetchInversiones } = useReadContract({
       address: CONTRATO_ADDRESS, abi: ABI_FACTURA, functionName: 'inversiones',
       args: address ? [address] : ['0x0000000000000000000000000000000000000000'],
+      query: { refetchInterval: 4000 }
     });
 
     const recaudadoFormateado = totalRecaudado ? formatEther(totalRecaudado) : "0";
@@ -57,6 +61,10 @@ export function useFactura() {
         args: [amountInWei],
         gas: 500000n // <-- Forzamos el gas para que MetaMask pase de largo la simulación
       });
+      
+      // 4. IMPORTANTÍSIMO: Esperar a que la red mine la inversión antes de decir "éxito"
+      await waitForTransactionReceipt(config, { hash: hashInvest });
+
       return hashInvest;
     };
 
