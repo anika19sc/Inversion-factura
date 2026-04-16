@@ -4,6 +4,7 @@ import { sepolia } from 'wagmi/chains'
 export const config = createConfig({
   chains: [sepolia],
   transports: {
-    [sepolia.id]: http(), // Usa el RPC publico por defecto de viem
+    // Usamos Alchemy explícitamente para evitar nodos públicos oxidados o con datos cacheados
+    [sepolia.id]: http('https://eth-sepolia.g.alchemy.com/v2/demo'), 
   },
 })
