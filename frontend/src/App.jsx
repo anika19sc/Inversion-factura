@@ -233,6 +233,14 @@ const Faucet = ({ wallet, factura }) => {
           <div style={{ textAlign: "right" }}><div style={{ fontSize: 11, color: COLORS.textMuted, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>Cantidad</div><div style={{ fontSize: 28, fontFamily: "'Inter', sans-serif", fontWeight: 700, color: COLORS.accent }}>200</div></div>
         </div>
         <div style={{ marginBottom: 24 }}><div style={{ fontSize: 11, color: COLORS.textMuted, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Tu billetera</div><div style={{ padding: "10px 14px", background: COLORS.surfaceAlt, borderRadius: 7, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: COLORS.textMuted }}>{wallet}</div></div>
+        <div style={{ marginBottom: 24, padding: 16, background: COLORS.goldDim, border: `1px solid ${COLORS.gold}55`, borderRadius: 8 }}>
+          <div style={{ fontSize: 13, color: COLORS.gold, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Icon name="faucet" size={16} color={COLORS.gold} /> No olvides el Gas (Sepolia ETH)
+          </div>
+          <div style={{ fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>
+            Para poder recibir estos tokens ANKD o realizar inversiones, tu billetera necesita una fracción mínima de <strong>Sepolia ETH</strong> para pagar la comisión de red (gas fee). Si esta cuenta es nueva, la red rechazará la transacción por falta de fondos base.
+          </div>
+        </div>
         {state === "success" ? (
           <div style={{ textAlign: "center", padding: "16px 0" }}><div style={{ fontSize: 36, marginBottom: 12 }}>✓</div><div style={{ fontSize: 16, fontWeight: 700, color: COLORS.accent }}>200 ANKD enviados</div></div>
         ) : state === "loading" || factura.isTxPending ? (
@@ -393,8 +401,8 @@ const Admin = ({ factura }) => {
                       try { await factura.finishAndPay(inv.id, parseEther(aPagarTotalStr.toString())); factura.loadCatalog(); } catch(e){}
                       setLoadingPay(null);
                     }} disabled={!esComp}
-                    style={{ padding: "10px 20px", background: COLORS.redDim, border: `1px solid ${COLORS.red}55`, borderRadius: 7, color: COLORS.red, fontSize: 12, fontWeight: 700, cursor: esComp ? "pointer" : "not-allowed", opacity: esComp ? 1 : 0.4 }}>
-                    Simular que devuelve {aPagarTotalStr} ANKD
+                    style={{ padding: "10px 20px", background: COLORS.goldDim, border: `1px solid ${COLORS.gold}55`, borderRadius: 7, color: COLORS.gold, fontSize: 12, fontWeight: 700, cursor: esComp ? "pointer" : "not-allowed", opacity: esComp ? 1 : 0.4 }}>
+                    Pagar Factura ({aPagarTotalStr} ANKD)
                   </button>
                 )}
               </div>
@@ -471,10 +479,10 @@ function MainApp() {
       <header style={{ height: 60, borderBottom: `1px solid ${COLORS.border}`, display: "flex", alignItems: "center", padding: "0 24px", gap: 24, top: 0, background: COLORS.bg + "F0", zIndex: 100 }}>
         <div style={{ display: "flex", alignItems: "center", marginRight: 24 }}>
           {/* Nuevo Logo Completo (Icono + Texto) */}
-          <img src="/ankdol_logo_full.png" alt="ANKDOL" style={{ height: 38, width: "auto", objectFit: 'contain', filter: `drop-shadow(0 0 10px ${COLORS.accent}44)` }} />
+          <img src="/logo.png" alt="ANKDOL" style={{ height: 38, width: "auto", objectFit: 'contain', filter: `drop-shadow(0 0 10px ${COLORS.accent}44)` }} />
         </div>
         <nav style={{ display: "flex", gap: 4, flex: 1 }}>
-          {NAV_ITEMS.map(item => {
+          {NAV_ITEMS.filter(item => item.id !== "admin" || factura.isAdmin).map(item => {
             const active = activeNav === item.id && !selectedInvoice;
             return (
               <button key={item.id} onClick={() => { setActiveNav(item.id); setSelectedInvoice(null); }} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 14px", background: active ? COLORS.accentDim : "transparent", border: `1px solid ${active ? COLORS.accent + "44" : "transparent"}`, borderRadius: 7, color: active ? COLORS.accent : COLORS.textMuted, fontSize: 13, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontWeight: active ? 600 : 400, transition: "all 0.15s" }}>

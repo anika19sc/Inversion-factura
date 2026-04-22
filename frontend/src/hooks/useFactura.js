@@ -119,35 +119,59 @@ export function useFactura(customContractAddress) {
   };
 
   const invest = async (facturaId, amountInANKD) => {
+    if (!address) throw new Error("Wallet no conectada");
     const amountInWei = parseEther(amountInANKD.toString());
 
-    // 1. Approve (Infinite)
-    const hashApprove = await writeContract({ 
-      address: activeContract, abi: ABI_FACTURA, functionName: 'approve', args: [activeContract, maxUint256] 
+    // 1. Check Allowance
+    const allowanceActual = await readContract(config, {
+      address: activeContract, abi: ABI_FACTURA, functionName: 'allowance', args: [address, activeContract]
     });
-    await waitForTransactionReceipt(config, { hash: hashApprove });
-    await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // 2. Invest with Gas Limit Bypass
+    if (allowanceActual < amountInWei) {
+      const hashApprove = await writeContract({ 
+        address: activeContract, abi: ABI_FACTURA, functionName: 'approve', args: [activeContract, maxUint256] 
+      });
+      await waitForTransactionReceipt(config, { hash: hashApprove });
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    // 2. Invest
     const hashInvest = await writeContract({ 
       address: activeContract, abi: ABI_FACTURA, functionName: 'invest', 
-      args: [facturaId, amountInWei], gas: 500000n
+      args: [BigInt(facturaId), amountInWei], gas: 500000n
     });
     await waitForTransactionReceipt(config, { hash: hashInvest });
   };
 
   const claimReturn = async (facturaId) => {
-    const hashRetiro = await writeContract({ address: activeContract, abi: ABI_FACTURA, functionName: 'claim', args: [facturaId] });
+    const hashRetiro = await writeContract({ 
+      address: activeContract, abi: ABI_FACTURA, functionName: 'claim', 
+      args: [BigInt(facturaId)] 
+    });
     await waitForTransactionReceipt(config, { hash: hashRetiro });
   }
 
   const finishAndPay = async (facturaId, montoEnWei) => {
-    // 1. Approve
-    const hashApprove = await writeContract({ address: activeContract, abi: ABI_FACTURA, functionName: 'approve', args: [activeContract, maxUint256] });
-    await waitForTransactionReceipt(config, { hash: hashApprove });
+    if (!address) throw new Error("Wallet no conectada");
+    
+    // 1. Check Allowance
+    const allowanceActual = await readContract(config, {
+      address: activeContract, abi: ABI_FACTURA, functionName: 'allowance', args: [address, activeContract]
+    });
+
+    if (allowanceActual < montoEnWei) {
+      const hashApprove = await writeContract({ 
+        address: activeContract, abi: ABI_FACTURA, functionName: 'approve', args: [activeContract, maxUint256] 
+      });
+      await waitForTransactionReceipt(config, { hash: hashApprove });
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
     
     // 2. Pay
-    const hashPay = await writeContract({ address: activeContract, abi: ABI_FACTURA, functionName: 'finishAndPay', args: [facturaId, montoEnWei] });
+    const hashPay = await writeContract({ 
+      address: activeContract, abi: ABI_FACTURA, functionName: 'finishAndPay', 
+      args: [BigInt(facturaId), montoEnWei] 
+    });
     await waitForTransactionReceipt(config, { hash: hashPay });
   }
 
