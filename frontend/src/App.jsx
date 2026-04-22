@@ -478,8 +478,9 @@ function MainApp() {
     <div style={{ fontFamily: "'DM Sans', sans-serif", background: COLORS.bg, color: COLORS.text, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <header style={{ height: 60, borderBottom: `1px solid ${COLORS.border}`, display: "flex", alignItems: "center", padding: "0 24px", gap: 24, top: 0, background: COLORS.bg + "F0", zIndex: 100 }}>
         <div style={{ display: "flex", alignItems: "center", marginRight: 24 }}>
-          {/* Nuevo Logo Completo (Icono + Texto) */}
-          <img src="/logo.png" alt="ANKDOL" style={{ height: 38, width: "auto", objectFit: 'contain', filter: `drop-shadow(0 0 10px ${COLORS.accent}44)` }} />
+          <div style={{ fontSize: 24, fontFamily: "'Inter', sans-serif", fontWeight: 900, background: COLORS.accentGradient, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", letterSpacing: "0.05em", filter: `drop-shadow(0 0 12px ${COLORS.accent}66)` }}>
+            ANKDOL
+          </div>
         </div>
         <nav style={{ display: "flex", gap: 4, flex: 1 }}>
           {NAV_ITEMS.filter(item => item.id !== "admin" || factura.isAdmin).map(item => {

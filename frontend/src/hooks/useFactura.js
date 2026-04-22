@@ -122,14 +122,14 @@ export function useFactura(customContractAddress) {
     if (!address) throw new Error("Wallet no conectada");
     const amountInWei = parseEther(amountInANKD.toString());
 
-    // 1. Check Allowance
+    // 1. Check Allowance (Hack inteligente: El SC utiliza transferFrom interno sin "this.", por lo cual el spender que detecta OpenZeppelin es el propio usuario "msg.sender". Deberiamos aprobar al propio usuario en lugar del activeContract)
     const allowanceActual = await readContract(config, {
-      address: activeContract, abi: ABI_FACTURA, functionName: 'allowance', args: [address, activeContract]
+      address: activeContract, abi: ABI_FACTURA, functionName: 'allowance', args: [address, address]
     });
 
     if (allowanceActual < amountInWei) {
       const hashApprove = await writeContract({ 
-        address: activeContract, abi: ABI_FACTURA, functionName: 'approve', args: [activeContract, maxUint256] 
+        address: activeContract, abi: ABI_FACTURA, functionName: 'approve', args: [address, maxUint256] 
       });
       await waitForTransactionReceipt(config, { hash: hashApprove });
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -154,14 +154,14 @@ export function useFactura(customContractAddress) {
   const finishAndPay = async (facturaId, montoEnWei) => {
     if (!address) throw new Error("Wallet no conectada");
     
-    // 1. Check Allowance
+    // 1. Check Allowance (Tricky fix same as invest)
     const allowanceActual = await readContract(config, {
-      address: activeContract, abi: ABI_FACTURA, functionName: 'allowance', args: [address, activeContract]
+      address: activeContract, abi: ABI_FACTURA, functionName: 'allowance', args: [address, address]
     });
 
     if (allowanceActual < montoEnWei) {
       const hashApprove = await writeContract({ 
-        address: activeContract, abi: ABI_FACTURA, functionName: 'approve', args: [activeContract, maxUint256] 
+        address: activeContract, abi: ABI_FACTURA, functionName: 'approve', args: [address, maxUint256] 
       });
       await waitForTransactionReceipt(config, { hash: hashApprove });
       await new Promise(resolve => setTimeout(resolve, 2000));
