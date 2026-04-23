@@ -94,8 +94,8 @@ contract FacturaTokenizada is ERC20, AccessControl, ReentrancyGuard {
         require(balanceOf(msg.sender) >= _pagoTotalAbonado, "El Manager no tiene fondos suficientes");
 
         // El Admin deposita el Capital + Ganancia devuelta por la empresa
-        bool pagoExitoso = transferFrom(msg.sender, address(this), _pagoTotalAbonado);
-        require(pagoExitoso, "Transferencia fallida (Falta approve del Admin?)");
+        // Transferencia limpia usando _transfer interno sin fricción de approvals
+        _transfer(msg.sender, address(this), _pagoTotalAbonado);
 
         f.pagoTotal = _pagoTotalAbonado;
         f.estado = Estado.Pagado;
@@ -121,9 +121,8 @@ contract FacturaTokenizada is ERC20, AccessControl, ReentrancyGuard {
         require(amount > 0, "Invierte mas de 0");
         require(f.totalRecaudado + amount <= f.metaRecaudacion, "Asignacion supera la meta");
         
-        // Exige approve del usuario a este contrato previo
-        bool transaccion = transferFrom(msg.sender, address(this), amount);
-        require(transaccion, "Fallo transferencia");
+        // Transferencia directa de tokens al SC (Usa _transfer nativo de OpenZeppelin al heredar ERC20, no requiere allowance previo)
+        _transfer(msg.sender, address(this), amount);
 
         inversiones[_facturaId][msg.sender] += amount;
         f.totalRecaudado += amount;

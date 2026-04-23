@@ -122,18 +122,8 @@ export function useFactura(customContractAddress) {
     if (!address) throw new Error("Wallet no conectada");
     const amountInWei = parseEther(amountInANKD.toString());
 
-    // 1. Check Allowance (Hack inteligente: El SC utiliza transferFrom interno sin "this.", por lo cual el spender que detecta OpenZeppelin es el propio usuario "msg.sender". Deberiamos aprobar al propio usuario en lugar del activeContract)
-    const allowanceActual = await readContract(config, {
-      address: activeContract, abi: ABI_FACTURA, functionName: 'allowance', args: [address, address]
-    });
-
-    if (allowanceActual < amountInWei) {
-      const hashApprove = await writeContract({ 
-        address: activeContract, abi: ABI_FACTURA, functionName: 'approve', args: [address, maxUint256] 
-      });
-      await waitForTransactionReceipt(config, { hash: hashApprove });
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
+    // Nota: Eliminamos chequeo de Allowance porque el rediseño usando _transfer interno 
+    // en FacturaTokenizada.sol omite la necesidad web3 de hacer approvals dobles!
 
     // 2. Invest
     const hashInvest = await writeContract({ 
@@ -154,18 +144,7 @@ export function useFactura(customContractAddress) {
   const finishAndPay = async (facturaId, montoEnWei) => {
     if (!address) throw new Error("Wallet no conectada");
     
-    // 1. Check Allowance (Tricky fix same as invest)
-    const allowanceActual = await readContract(config, {
-      address: activeContract, abi: ABI_FACTURA, functionName: 'allowance', args: [address, address]
-    });
-
-    if (allowanceActual < montoEnWei) {
-      const hashApprove = await writeContract({ 
-        address: activeContract, abi: ABI_FACTURA, functionName: 'approve', args: [address, maxUint256] 
-      });
-      await waitForTransactionReceipt(config, { hash: hashApprove });
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
+    // Nota: Eliminamos chequeo de Allowance para Admin también.
     
     // 2. Pay
     const hashPay = await writeContract({ 
