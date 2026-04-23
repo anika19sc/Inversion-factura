@@ -128,7 +128,7 @@ export function useFactura(customContractAddress) {
     // 2. Invest
     const hashInvest = await writeContract({ 
       address: activeContract, abi: ABI_FACTURA, functionName: 'invest', 
-      args: [BigInt(facturaId), amountInWei], gas: 500000n
+      args: [BigInt(facturaId), amountInWei]
     });
     await waitForTransactionReceipt(config, { hash: hashInvest });
   };

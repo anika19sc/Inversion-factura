@@ -4,6 +4,7 @@ import { injected } from 'wagmi/connectors';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { config } from './config/wagmiConfig';
 import { useFactura } from './hooks/useFactura';
+import { CONTRATO_ADDRESS } from './constants/contracts';
 
 const queryClient = new QueryClient();
 
@@ -421,8 +422,8 @@ function MainApp() {
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
-  // Pasamos la dirección solicitada explícitamente al hook
-  const factura = useFactura("0xE46341E53f1D326958Ef13cAf0c8673a5B9C15bb");
+  // Pasamos la dirección solicitada explícitamente al hook (ahora vinculada globalmente)
+  const factura = useFactura(CONTRATO_ADDRESS);
   const wallet = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "No conectada";
 
   const [view, setView] = useState("landing");
